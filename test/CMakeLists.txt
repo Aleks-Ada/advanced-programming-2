@@ -1,6 +1,7 @@
 set(BINARY ${CMAKE_PROJECT_NAME}_test)
 
-file(GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.h *.cc)
+# file(GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.h *.cc)
+set(TEST_SOURCES main.cc board-render-test.cc)
 set(SOURCES ${TEST_SOURCES})
 
 add_executable(${BINARY} ${TEST_SOURCES})
