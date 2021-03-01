@@ -1,0 +1,2 @@
+language = "cpp"
+run = "clang++ -Wall -std=c++17 src/*.cc -o main && ./main"
