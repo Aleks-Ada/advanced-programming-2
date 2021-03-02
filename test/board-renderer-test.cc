@@ -1,10 +1,10 @@
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include "board/board.h"
 #include "board/boat.h"
 #include "board-renderer.h"
 
-TEST(SimpleBoard, BoardRendererTest) {
+TEST(BoardRendererTest, SimpleRender) {
   Board board;
   board.SetWidth(10);
   board.SetHeight(10);
