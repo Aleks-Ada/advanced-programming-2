@@ -2,7 +2,7 @@
 
 #include "board/board.h"
 #include "board/boat.h"
-#include "board-renderer.h"
+#include "board-renderer/board-renderer.h"
 
 TEST(BoardRendererTest, SimpleRender) {
   Board board;

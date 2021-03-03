@@ -5,10 +5,10 @@ The battleships challenge is to create a command-line version of the
 famous battleships game. The grid is printed on the console, using
 numbers to indicate the rows, letters to indicate the columns (A - Z,
 then AA - ZZ, etc. for longer column grids), and also letters to
-represent ship_types on the board (for example, a submarine is 3 S letters
+represent ships on the board (for example, a submarine is 3 S letters
 in a row).
 
-The game should load the board size and the types of ship_types from a
+The game should load the board size and the types of ships from a
 configuration file. For example, here is the default configuration:
 ```
 Board: 10x10
@@ -42,7 +42,7 @@ board), which should not display the ship positions.
 The game must also include a computer player for single-player
 gameplay.
 
-Furthermore, players must be able to place ship_types, have ship_types
+Furthermore, players must be able to place ships, have ships
 auto-placed, target specific locations on the board, see hits and
 misses, support a turn-based play system, and (for merit and
 distinction) support the "salvo" game mode (where each ship can fire a
@@ -58,10 +58,10 @@ My proposed solution consists of four parts:
 1. Board
    
    The board will contain all of the logic for placing and targeting
-   ship_types. Furthermore, when mines are implemented, it will also hold
+   ships. Furthermore, when mines are implemented, it will also hold
    mines. It will perform logic checks for board out of bounds
-   placement and placing ship_types on top of eachother. Lastly, it will
-   also be able to auto-place ship_types.
+   placement and placing ships on top of eachother. Lastly, it will
+   also be able to auto-place ships.
 1. Board renderer
    
    The board renderer is a component that takes a board and then
@@ -70,7 +70,7 @@ My proposed solution consists of four parts:
    all possible variations of a board. For example, the renderer can
    be put into a TARGET state, where you can only see where you have
    hit and not the enemy's actual ship locations. If put into a SELF
-   state, you can see all of your ship_types and where they have been hit.
+   state, you can see all of your ships and where they have been hit.
 1. Main
 
    The main component will contain user interaction (input/output),
