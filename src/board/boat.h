@@ -3,63 +3,30 @@
 
 #include <string>
 #include <stdexcept>
+#include <utility>
 
-enum class BoatType {
-  Carrier,
-  Battleship,
-  Destroyer,
-  Submarine,
-  PatrolBoat
-};
+#include "configuration/configuration.h"
 
 enum class Orientation {
   Horizontal,
   Vertical
 };
 
-class LetterIndex {
-public:
-  explicit LetterIndex(const std::string_view& value) : value(value) {}
-
-  int ToInt() const {
-    if (value.size() == 1) {
-      char character = value[0];
-      // Subtract ASCII alphabet to get pure character index in the alphabet
-      return character - 65;
-    }
-
-    throw std::runtime_error("Undefined letter index");
-  }
-
-private:
-  std::string_view value;
-};
-
-class Location {
-public:
-  Location(const LetterIndex x, const int y) : Location(x.ToInt(), y) {};
-  Location(const int x, const int y) : x(x), y(y) {};
-
-public:
-  int x;
-  int y;
-};
-
-#define BoardLetterIndex(rowLetter, column) Location(LetterIndex(#rowLetter), column)
-
 class Boat {
 public:
-  Boat(BoatType type, Orientation orientation, Location location);
+  Boat(ShipType type, const Orientation orientation)
+    : type(std::move(type)),
+      orientation(orientation) {}
 
-  BoatType GetType() const;
-  Location GetLocation() const;
-  Orientation GetOrientation() const;
+  bool operator==(const Boat& rhs) const;
+
+  const std::string& GetName() const;
   int GetSize() const;
+  Orientation GetOrientation() const;
 
 private:
-  BoatType type;
+  ShipType type;
   Orientation orientation;
-  Location location;
 };
 
 #endif // SRC_BOARD_BOAT_H
