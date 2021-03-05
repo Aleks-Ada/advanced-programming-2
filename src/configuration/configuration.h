@@ -20,5 +20,4 @@ struct Configuration {
   std::vector<ShipType> ship_types;
 };
 
-
 #endif // SRC_CONFIGURATION_CONFIGURATION_H

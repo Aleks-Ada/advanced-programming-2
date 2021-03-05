@@ -1,6 +1,18 @@
 #include "board-renderer.h"
 
-std::string CellSeparator() {
+void BoardRenderer::SetMode(RenderMode render_mode) {
+  this->render_mode = render_mode;
+}
+
+std::string_view NewLine() {
+  return "\n";
+}
+
+std::string_view CellSeparator() {
+  return " ";
+}
+
+std::string_view BlankCell() {
   return " ";
 }
 
@@ -19,19 +31,8 @@ std::string Pad(const std::string& string, const int requiredSize) {
   return string + std::string(paddingLettersRequired, ' ');
 }
 
-std::string BoatTypeToString(const BoatType boatType) {
-  switch (boatType) {
-    case BoatType::Carrier:
-      return "C";
-    case BoatType::Battleship:
-      return "B";
-    case BoatType::Destroyer:
-      return "D";
-    case BoatType::Submarine:
-      return "S";
-    case BoatType::PatrolBoat:
-      return "P";
-  }
+std::string BoatToString(const Boat& boat) {
+  return std::string() + boat.GetName().at(0);
 }
 
 std::string BoardRenderer::Render() const {
@@ -48,24 +49,38 @@ std::string BoardRenderer::Render() const {
     render += CoordinateIndexToLetter(columnIndex);
   }
 
-  render += "\n";
+  render += NewLine();
 
   for (int rowIndex = 1; rowIndex <= height; ++rowIndex) {
     render += Pad(std::to_string(rowIndex), maxRowIdentifierChars);
 
-    for (int columnIndex = 0; columnIndex < width; ++columnIndex) {
+    for (int columnIndex = 1; columnIndex <= width; ++columnIndex) {
       render += CellSeparator();
 
-      std::optional<Boat> optionalBoat = board.GetBoat(Location(columnIndex, rowIndex));
+      const Location location(columnIndex, rowIndex);
 
-      if (optionalBoat.has_value()) {
-        render += BoatTypeToString(optionalBoat.value().GetType());
-      } else {
-        render += " ";
+      if (render_mode == SELF) {
+        std::optional<Boat> optionalBoat = board.GetBoat(location);
+
+        if (optionalBoat.has_value()) {
+          render += BoatToString(optionalBoat.value());
+        } else {
+          render += BlankCell();
+        }
+      } else if (render_mode == TARGET) {
+        if (board.HasShot(location)) {
+          if (board.IsHit(location)) {
+            render += "●";
+          } else {
+            render += "X";
+          }
+        } else {
+          render += BlankCell();
+        }
       }
     }
 
-    render += "\n";
+    render += NewLine();
   }
 
   return render;

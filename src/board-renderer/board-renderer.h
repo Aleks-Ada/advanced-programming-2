@@ -6,14 +6,21 @@
 
 #include "board/board.h"
 
+enum RenderMode {
+  SELF,
+  TARGET
+};
+
 class BoardRenderer {
 public:
-  explicit BoardRenderer(Board board) : board(std::move(board)) {}
+  explicit BoardRenderer(const Board& board) : board(board), render_mode(SELF) {}
 
+  void SetMode(RenderMode render_mode);
   std::string Render() const;
 
 private:
-  Board board;
+  const Board& board;
+  RenderMode render_mode;
 };
 
 #endif // SRC_BOARD_RENDERER_H
