@@ -15,7 +15,7 @@ void PrintTo(const ShipType& shipType, std::ostream* os) {
 
 TEST(ConfigurationParserTest, SimpleParse) {
   const std::string configuration_string =
-      "Board: 40x35\n"
+      "Board: 80x80\n"
       "Boat: Carrier, 5\n"
       "Boat: Battleship, 4\n"
       "Boat: Destroyer, 3\n"
@@ -25,31 +25,8 @@ TEST(ConfigurationParserTest, SimpleParse) {
 
   Configuration configuration = parser.Parse();
 
-  EXPECT_EQ(40, configuration.board_width);
-  EXPECT_EQ(35, configuration.board_height);
-  EXPECT_THAT(configuration.ship_types,
-              UnorderedElementsAre(
-                  ShipType{ "Carrier", 5 },
-                  ShipType{ "Battleship", 4 },
-                  ShipType{ "Destroyer", 3 },
-                  ShipType{ "Submarine", 3 },
-                  ShipType{ "Patrol Boat", 2 }));
-}
-
-TEST(ConfigurationParserTest, UnixNewlines) {
-  const std::string configuration_string =
-      "Board: 40x35\r\n"
-      "Boat: Carrier, 5\r\n"
-      "Boat: Battleship, 4\r\n"
-      "Boat: Destroyer, 3\r\n"
-      "Boat: Submarine, 3\r\n"
-      "Boat: Patrol Boat, 2\r\n";
-  ConfigurationParser parser = ConfigurationParser(configuration_string);
-
-  Configuration configuration = parser.Parse();
-
-  EXPECT_EQ(40, configuration.board_width);
-  EXPECT_EQ(35, configuration.board_height);
+  EXPECT_EQ(80, configuration.board_width);
+  EXPECT_EQ(80, configuration.board_height);
   EXPECT_THAT(configuration.ship_types,
               UnorderedElementsAre(
                   ShipType{ "Carrier", 5 },
@@ -116,4 +93,36 @@ TEST(ConfigurationParserTest, NoBoardReportsError) {
 
   EXPECT_THAT(parser.GetErrors(),
               Contains(ConfigurationError::BoardSizeNotSpecified));
+}
+
+TEST(ConfigurationParserTest, BoardSizeTooBigWidth) {
+  const std::string configuration_string =
+      "Board: 81x80\n"
+      "Boat: Carrier, 5\n"
+      "Boat: Battleship, 4\n"
+      "Boat: Destroyer, 3\n"
+      "Boat: Submarine, 3\n"
+      "Boat: Patrol Boat, 2\n";
+  ConfigurationParser parser = ConfigurationParser(configuration_string);
+
+  Configuration configuration = parser.Parse();
+
+  EXPECT_THAT(parser.GetErrors(),
+              Contains(ConfigurationError::BoardSizeTooBig));
+}
+
+TEST(ConfigurationParserTest, BoardSizeTooBigHeight) {
+  const std::string configuration_string =
+      "Board: 80x81\n"
+      "Boat: Carrier, 5\n"
+      "Boat: Battleship, 4\n"
+      "Boat: Destroyer, 3\n"
+      "Boat: Submarine, 3\n"
+      "Boat: Patrol Boat, 2\n";
+  ConfigurationParser parser = ConfigurationParser(configuration_string);
+
+  Configuration configuration = parser.Parse();
+
+  EXPECT_THAT(parser.GetErrors(),
+              Contains(ConfigurationError::BoardSizeTooBig));
 }

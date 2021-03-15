@@ -8,7 +8,8 @@
 
 enum class ConfigurationError {
   MultipleShipsWithSameStartingLetter,
-  BoardSizeNotSpecified
+  BoardSizeNotSpecified,
+  BoardSizeTooBig
 };
 
 class ConfigurationParser {

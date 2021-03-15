@@ -11,6 +11,7 @@ public:
 
   Orientation GenerateOrientation() override;
   Location GenerateLocation(const int width, const int height) override;
+  Location ChooseLocation(const std::vector<Location>& choices);
 
 private:
   int RandomNumber(const int start, const int end);

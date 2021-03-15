@@ -8,8 +8,16 @@ struct ShipType {
   std::string name;
   int size;
 
-  bool operator==(const ShipType& shipType) const {
-    return (shipType.size == size) && (shipType.name == name);
+  bool operator==(const ShipType& ship_type) const {
+    return (ship_type.size == size) && (ship_type.name == name);
+  }
+
+  bool operator<(const ShipType& ship_type) const {
+    if (ship_type.size == size) {
+      return name < ship_type.name;
+    }
+
+    return size < ship_type.size;
   }
 };
 

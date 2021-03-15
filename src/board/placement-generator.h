@@ -1,7 +1,6 @@
 #ifndef SRC_BOARD_PLACEMENT_GENERATOR_H
 #define SRC_BOARD_PLACEMENT_GENERATOR_H
 
-#include "boat.h"
 #include "board.h"
 
 class PlacementGenerator {

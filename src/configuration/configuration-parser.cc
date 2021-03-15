@@ -21,6 +21,12 @@ void ConfigurationParser::ParseBoard() {
     const int width = std::stoi(width_string);
     const int height = std::stoi(height_string);
 
+    if (width > 80) {
+      ReportError(ConfigurationError::BoardSizeTooBig);
+    } else if (height > 80) {
+      ReportError(ConfigurationError::BoardSizeTooBig);
+    }
+
     configuration.board_width = width;
     configuration.board_height = height;
   } else {

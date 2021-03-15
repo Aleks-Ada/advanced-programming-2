@@ -15,10 +15,11 @@ class BoardRenderer {
 public:
   explicit BoardRenderer(const Board& board) : board(board), render_mode(SELF) {}
 
-  void SetMode(RenderMode render_mode);
+  void SetMode(const RenderMode render_mode);
   std::string Render() const;
 
-private:
+  bool ShouldRenderWide(const int column) const;
+
   const Board& board;
   RenderMode render_mode;
 };

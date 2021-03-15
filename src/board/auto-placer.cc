@@ -8,8 +8,9 @@ bool AutoPlacer::AutoPlace(const std::vector<ShipType>& boats) {
 
     for (const ShipType& ship_type : boats) {
       success = test_board.AddBoat(
-          Boat(ship_type, placement_generator.GenerateOrientation()),
-          placement_generator.GenerateLocation(test_board.GetWidth(), test_board.GetHeight()));
+          ship_type,
+          placement_generator.GenerateLocation(test_board.GetWidth(), test_board.GetHeight()),
+          placement_generator.GenerateOrientation());
 
       if (!success) {
         test_board = Board(board);

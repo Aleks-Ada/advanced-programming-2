@@ -18,3 +18,7 @@ int RandomPlacementGenerator::RandomNumber(const int start, const int end) {
   std::uniform_int_distribution<int> distribution(start, end);
   return distribution(random);
 }
+
+Location RandomPlacementGenerator::ChooseLocation(const std::vector<Location>& choices) {
+  return choices.at(RandomNumber(0, choices.size() - 1));
+}

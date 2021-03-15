@@ -6,22 +6,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "boat.h"
 #include "configuration/configuration.h"
 
 class LetterIndex {
 public:
   explicit LetterIndex(const std::string_view& value) : value(value) {}
 
-  int ToInt() const {
-    if (value.size() == 1) {
-      char character = value[0];
-      // Subtract ASCII alphabet to get pure character index in the alphabet
-      return character - ('A' - 1);
-    }
-
-    throw std::runtime_error("Undefined letter index");
-  }
+  int ToInt() const;
 
 private:
   std::string_view value;
@@ -33,6 +24,10 @@ struct Location {
   Location(const LetterIndex x, const int y) : Location(x.ToInt(), y) {};
   Location(const int x, const int y) : x(x), y(y) {};
 
+  bool operator==(const Location rhs) const {
+    return (rhs.x == x) && (rhs.y == y);
+  }
+
   int x;
   int y;
 };
@@ -40,18 +35,40 @@ struct Location {
 #define BoardLetterIndex(columnLetter, row) Location(LetterIndex(#columnLetter), row)
 #define BoardLocation(column, row) Location(LetterIndex(column), row)
 
+enum class Orientation {
+  Horizontal,
+  Vertical
+};
+
+class Boat {
+public:
+  Boat(ShipType type, Orientation orientation)
+      : type(std::move(type)),
+        orientation(orientation) {}
+
+  bool operator==(const Boat& rhs) const;
+
+  const std::string& GetName() const;
+  int GetSize() const;
+  Orientation GetOrientation() const;
+  ShipType GetShipType() const;
+
+private:
+  ShipType type;
+  Orientation orientation;
+};
+
 class Board {
 public:
-  Board() : width(0), height(0) {}
-
   Board(const int width, const int height)
     : width(width), height(height) {}
 
-  void SetWidth(const int value);
-  void SetHeight(const int value);
-  bool AddBoat(const Boat& boat, const Location start_location);
-  bool MoveBoat(const Boat& boat, const Location new_location);
+  bool AddBoat(const ShipType& ship, const Location start_location, const Orientation orientation);
+  bool MoveBoat(const ShipType& ship, const Location new_location, const Orientation new_orientation);
   bool Shoot(const Location location);
+  void Reset();
+  void AddMine(const Location location);
+  void AddRandomMines(class PlacementGenerator& placement_generator);
 
   int GetWidth() const;
   int GetHeight() const;
@@ -60,10 +77,14 @@ public:
   bool HasShot(const Location location) const;
   bool IsHit(const Location location) const;
   bool AreAllShipsSunk() const;
+  bool IsMine(const Location location) const;
+  std::vector<Location> NotFiredLocations() const;
+  std::vector<ShipType> GetRemainingShips() const;
 
 private:
   bool IsInRange(const Location location) const;
   bool HasBoat(const Location location) const;
+  bool HasBeenKilled(const ShipType& ship_type) const;
 
   class LocationHasher {
   public:
@@ -97,6 +118,7 @@ private:
   std::unordered_map<std::string, Location> boat_name_to_location;
   std::unordered_map<Location, Boat, LocationHasher, LocationEquals> boats;
   std::set<Location, LocationLessThan> shot_locations;
+  std::set<Location, LocationLessThan> mine_locations;
 };
 
 #endif // SRC_BOARD_BOARD_H

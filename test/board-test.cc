@@ -1,87 +1,100 @@
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include <queue>
 
 #include "board/auto-placer.h"
 #include "board/board.h"
 
+using ::testing::Optional;
+using ::testing::UnorderedElementsAre;
+
 void PrintTo(const Boat& boat, std::ostream* os) {
-  *os << "Boat{ " << boat.GetName() << " }";
+  *os << "Boat{ "
+      << boat.GetName()
+      << ", " << boat.GetSize()
+      << ", " << (boat.GetOrientation() == Orientation::Vertical ? "Vertical" : "Horizontal")
+      << " }";
+}
+
+void PrintTo(const Location location, std::ostream* os) {
+  *os << "Location{ " << location.x << ", " << location.y << " }";
 }
 
 TEST(BoardTest, PlaceShip) {
-  const Boat cattleship(ShipType{"Cattleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{"Cattleship", 4 };
   Board board(10, 10);
 
-  board.AddBoat(cattleship, BoardLetterIndex(A, 1));
+  board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
 
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 1)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 2)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 3)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 4)), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 1))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 2))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 3))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 4))->GetShipType(), cattleship);
 }
 
 TEST(BoardTest, CountsPlacedShips) {
-  Boat battleship(ShipType{ "Battleship", 5 }, Orientation::Vertical);
-  Boat submarine(ShipType{ "Submarine", 3 }, Orientation::Vertical);
-  Boat patrol_boat(ShipType{ "Patrol Boat", 2 }, Orientation::Vertical);
+  ShipType battleship = ShipType{ "Battleship", 5 };
+  ShipType submarine = ShipType{ "Submarine", 3 };
+  ShipType patrol_boat = ShipType{ "Patrol Boat", 2 };
   Board board(10, 10);
 
-  board.AddBoat(battleship, BoardLetterIndex(A, 1));
-  board.AddBoat(submarine, BoardLetterIndex(B, 1));
-  board.AddBoat(patrol_boat, BoardLetterIndex(C, 1));
+  board.AddBoat(battleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.AddBoat(submarine, BoardLetterIndex(B, 1), Orientation::Vertical);
+  board.AddBoat(patrol_boat, BoardLetterIndex(C, 1), Orientation::Vertical);
 
   EXPECT_EQ(3, board.PlacedBoatsCount());
 }
 
 TEST(BoardTest, OverlapPlacementDoesntWork) {
-  const Boat cattleship(ShipType{"Cattleship", 4 }, Orientation::Vertical);
-  const Boat battleship(ShipType{"Battleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{"Cattleship", 4 };
+  const ShipType battleship = ShipType{"Battleship", 4 };
   Board board(10, 10);
 
-  const bool placement1 = board.AddBoat(cattleship, BoardLetterIndex(A, 1));
-  const bool placement2 = board.AddBoat(battleship, BoardLetterIndex(A, 4)); // Overlap 1 cell
+  const bool placement1 = board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  // Overlap 1 cell
+  const bool placement2 = board.AddBoat(battleship, BoardLetterIndex(A, 4), Orientation::Vertical);
 
   EXPECT_TRUE(placement1);
   EXPECT_FALSE(placement2);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 1)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 2)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 3)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 4)), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 1))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 2))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 3))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 4))->GetShipType(), cattleship);
 }
 
 TEST(BoardTest, EdgeOfBoardPlacementDoesntWork) {
-  const Boat cattleship(ShipType{"Cattleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{"Cattleship", 4 };
   Board board(10, 10);
 
-  const bool placement = board.AddBoat(cattleship, BoardLetterIndex(A, 10));
+  const bool placement = board.AddBoat(cattleship, BoardLetterIndex(A, 10), Orientation::Vertical);
 
   EXPECT_FALSE(placement);
   EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 10)), std::nullopt);
 }
 
 TEST(BoardTest, OutOfBoardPlacementDoesntWork) {
-  const Boat cattleship(ShipType{"Cattleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{"Cattleship", 4 };
   Board board(10, 10);
 
-  const bool placement = board.AddBoat(cattleship, BoardLetterIndex(Z, 50));
+  const bool placement = board.AddBoat(cattleship, BoardLetterIndex(Z, 50), Orientation::Vertical);
 
   EXPECT_FALSE(placement);
   EXPECT_EQ(board.GetBoat(BoardLetterIndex(Z, 50)), std::nullopt);
 }
 
 TEST(BoardTest, MoveShip) {
-  const Boat cattleship(ShipType{"Cattleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{"Cattleship", 4 };
   Board board(10, 10);
 
-  board.AddBoat(cattleship, BoardLetterIndex(A, 1));
-  board.MoveBoat(cattleship, BoardLetterIndex(C, 7));
-  board.MoveBoat(cattleship, BoardLetterIndex(E, 7));
+  board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.MoveBoat(cattleship, BoardLetterIndex(C, 7), Orientation::Vertical);
+  board.MoveBoat(cattleship, BoardLetterIndex(E, 7), Orientation::Horizontal);
 
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(E, 7)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(E, 8)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(E, 9)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(E, 10)), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(E, 7))->GetShipType(), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(F, 7))->GetShipType(), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(G, 7))->GetShipType(), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(H, 7))->GetShipType(), cattleship);
   EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 7)), std::nullopt);
   EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 8)), std::nullopt);
   EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 9)), std::nullopt);
@@ -93,19 +106,19 @@ TEST(BoardTest, MoveShip) {
 }
 
 TEST(BoardTest, MoveToInvalidLocationDoesntMove) {
-  const Boat cattleship(ShipType{ "Cattleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{ "Cattleship", 4 };
   Board board(10, 10);
 
-  board.AddBoat(cattleship, BoardLetterIndex(A, 1));
-  board.MoveBoat(cattleship, BoardLetterIndex(C, 7));
-  const bool final_move = board.MoveBoat(cattleship, BoardLetterIndex(A, 10));
+  board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.MoveBoat(cattleship, BoardLetterIndex(C, 7), Orientation::Vertical);
+  const bool final_move = board.MoveBoat(cattleship, BoardLetterIndex(A, 10), Orientation::Vertical);
 
   EXPECT_FALSE(final_move);
   EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 10)), std::nullopt);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 7)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 8)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 9)), cattleship);
-  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 10)), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 7))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 8))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 9))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 10))->GetShipType(), cattleship);
 }
 
 class PredefinedPlacementGenerator : public PlacementGenerator {
@@ -208,11 +221,11 @@ TEST(BoardTest, AutoPlaceNotEnoughSpaceRetriesButFails) {
 }
 
 TEST(BoardTest, ShootTorpedoes) {
-  const Boat cattleship(ShipType{ "Cattleship", 4 }, Orientation::Vertical);
-  const Boat battleship(ShipType{ "Battleship", 4 }, Orientation::Vertical);
+  const ShipType cattleship = ShipType{ "Cattleship", 4 };
+  const ShipType battleship = ShipType{ "Battleship", 4 };
   Board board(4, 4);
-  board.AddBoat(cattleship, BoardLetterIndex(A, 1));
-  board.AddBoat(battleship, BoardLetterIndex(B, 1));
+  board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.AddBoat(battleship, BoardLetterIndex(B, 1), Orientation::Vertical);
 
   const bool shot1_sucess = board.Shoot(BoardLetterIndex(A, 1));
   const bool shot2_sucess = board.Shoot(BoardLetterIndex(B, 1));
@@ -250,15 +263,15 @@ TEST(BoardTest, ShootOutOfRangeLocationInvalid) {
 
 TEST(BoardTest, NotFiredLocationNotHit) {
   Board board(10, 10);
-  board.AddBoat(Boat(ShipType{ "Cattleship", 5 }, Orientation::Horizontal), BoardLetterIndex(A, 1));
+  board.AddBoat(ShipType{ "Cattleship", 5 }, BoardLetterIndex(A, 1), Orientation::Horizontal);
 
   EXPECT_FALSE(board.IsHit(BoardLetterIndex(A, 1)));
 }
 
 TEST(BoardTest, AllShipsSunk) {
   Board board(10, 10);
-  board.AddBoat(Boat(ShipType{ "Cattleship", 3 }, Orientation::Vertical), BoardLetterIndex(A, 1));
-  board.AddBoat(Boat(ShipType{ "Patrol Boat", 2 }, Orientation::Vertical), BoardLetterIndex(B, 1));
+  board.AddBoat(ShipType{ "Cattleship", 3 }, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Patrol Boat", 2 }, BoardLetterIndex(B, 1), Orientation::Vertical);
 
   board.Shoot(BoardLetterIndex(A, 1));
   board.Shoot(BoardLetterIndex(A, 2));
@@ -271,10 +284,70 @@ TEST(BoardTest, AllShipsSunk) {
 
 TEST(BoardTest, AllShipsNotSunk) {
   Board board(10, 10);
-  board.AddBoat(Boat(ShipType{ "Cattleship", 3 }, Orientation::Vertical), BoardLetterIndex(A, 1));
+  board.AddBoat(ShipType{ "Cattleship", 3 }, BoardLetterIndex(A, 1), Orientation::Vertical);
   board.Shoot(BoardLetterIndex(A, 1));
   board.Shoot(BoardLetterIndex(A, 2));
   board.Shoot(BoardLetterIndex(B, 3));
 
   EXPECT_FALSE(board.AreAllShipsSunk());
+}
+
+TEST(BoardTest, ResetBoard) {
+  Board board(4, 1);
+  board.AddBoat(ShipType{ "Cattleship", 4 }, BoardLetterIndex(A, 1), Orientation::Horizontal);
+
+  board.Reset();
+
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 1)), std::nullopt);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 2)), std::nullopt);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 3)), std::nullopt);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(A, 4)), std::nullopt);
+}
+
+TEST(BoardTest, MoveShipSafeAfterResetting) {
+  Board board(4, 1);
+  board.AddBoat(ShipType{ "Cattleship", 4 }, BoardLetterIndex(A, 1), Orientation::Horizontal);
+
+  board.Reset();
+  board.MoveBoat(ShipType{ "Cattleship", 4 }, BoardLetterIndex(A, 1), Orientation::Horizontal);
+}
+
+TEST(BoardTest, NotFiredLocations) {
+  Board board(2, 2);
+  board.Shoot(BoardLetterIndex(A, 1));
+  board.Shoot(BoardLetterIndex(A, 2));
+
+  const std::vector<Location> not_fired_locations = board.NotFiredLocations();
+
+  EXPECT_THAT(not_fired_locations, UnorderedElementsAre(BoardLetterIndex(B, 1),
+                                                        BoardLetterIndex(B, 2)));
+}
+
+TEST(BoardTest, RemainingShips) {
+  const ShipType cattleship = ShipType{ "Cattleship", 5 };
+  const ShipType battleship = ShipType{ "Battleship", 4 };
+  const ShipType other = ShipType{ "Other Ship", 3 };
+  const ShipType patrol = ShipType{ "Patrol Boat", 2 };
+  Board board(4, 5);
+  board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.AddBoat(battleship, BoardLetterIndex(B, 1), Orientation::Vertical);
+  board.AddBoat(other, BoardLetterIndex(C, 1), Orientation::Vertical);
+  board.AddBoat(patrol, BoardLetterIndex(D, 1), Orientation::Vertical);
+  board.Shoot(BoardLetterIndex(A, 1));
+  board.Shoot(BoardLetterIndex(A, 2));
+  board.Shoot(BoardLetterIndex(A, 3));
+  board.Shoot(BoardLetterIndex(A, 4));
+  board.Shoot(BoardLetterIndex(A, 5));
+  board.Shoot(BoardLetterIndex(B, 1));
+  board.Shoot(BoardLetterIndex(B, 2));
+  board.Shoot(BoardLetterIndex(B, 3));
+  board.Shoot(BoardLetterIndex(B, 4));
+  board.Shoot(BoardLetterIndex(D, 1));
+
+  const std::vector<ShipType> remaining_ships = board.GetRemainingShips();
+
+  EXPECT_THAT(remaining_ships, UnorderedElementsAre(other, patrol));
+}
+
+TEST(BoardTest, ShootMineExplodesAdjacentShips) {
 }
