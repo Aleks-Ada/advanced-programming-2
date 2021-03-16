@@ -217,7 +217,7 @@ std::vector<Location> Board::NotFiredLocations() const {
     for (int y = 1; y <= height; ++y) {
       Location location(x, y);
 
-      if (shot_locations.find(location) == shot_locations.end()) {
+      if (!HasShot(location)) {
         locations.emplace_back(location);
       }
     }
