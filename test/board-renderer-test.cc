@@ -26,6 +26,30 @@ TEST(BoardRendererTest, SelfBoardRender) {
             "10                 P  \n", render);
 }
 
+TEST(BoardRendererTest, LowercaseLetters) {
+  Board board(10, 10);
+  BoardRenderer board_renderer(board);
+  board.AddBoat(ShipType{ "Carrier", 5 }, BoardLetterIndex(a, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Destroyer", 3 }, BoardLetterIndex(i, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Battleship", 4 }, BoardLetterIndex(e, 6), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Submarine", 3 }, BoardLetterIndex(c, 9), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Patrol Boat", 2 }, BoardLetterIndex(i, 9), Orientation::Vertical);
+
+  const std::string render = board_renderer.Render();
+
+  EXPECT_EQ("   A B C D E F G H I J\n"
+            "1                     \n"
+            "2  C               D  \n"
+            "3  C               D  \n"
+            "4  C               D  \n"
+            "5  C                  \n"
+            "6  C       B B B B    \n"
+            "7                     \n"
+            "8                     \n"
+            "9      S S S       P  \n"
+            "10                 P  \n", render);
+}
+
 TEST(BoardRendererTest, SelfBoardRenderWithMines) {
   Board board(10, 10);
   BoardRenderer board_renderer(board);

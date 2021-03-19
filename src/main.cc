@@ -245,7 +245,13 @@ std::optional<Location> ChooseLocation(const Configuration& configuration) {
     return std::nullopt;
   }
 
-  Location location = BoardLocation(column, row);
+  Location location;
+
+  try {
+    location = BoardLocation(column, row);
+  } catch (const std::runtime_error&) {
+    return std::nullopt;
+  }
 
   if ((location.x <= 0) ||
       (location.y <= 0) ||

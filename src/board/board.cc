@@ -5,7 +5,11 @@
 #include "placement-generator.h"
 #include "shared.h"
 
-char VerifyInRange(const char character) {
+char VerifyInRange(char character) {
+  if ((character >= 'a') && (character <= 'z')) {
+    character += ('A' - 'a'); // Convert to capital letter
+  }
+
   if ((character < 'A') || (character > 'Z')) {
     throw std::runtime_error("Letter index out of range");
   }
