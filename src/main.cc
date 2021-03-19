@@ -33,33 +33,6 @@ void Print(const char* value) {
   std::cout << value;
 }
 
-//template<typename... T>
-//void Print(const std::string_view format, T... values) {
-//  T values_array[] = { values... };
-//
-//  for (int index = 0; index < format.size(); ++index) {
-//    char character = format.at(index);
-//
-//    if (character == '{') {
-//      character = format.at(++index);
-//
-//      std::string value_index_string;
-//
-//      while ('0' <= character && character <= '9') {
-//        value_index_string += character;
-//      }
-//
-//      int value_index = std::stoi(value_index_string);
-//
-//      std::cout << std::to_string(values[value_index]);
-//
-//      ++index;
-//    } else {
-//      std::cout << character;
-//    }
-//  }
-//}
-
 template<typename T>
 void PrintLine(const T value) {
   std::cout << std::to_string(value) << "\n";
@@ -67,11 +40,6 @@ void PrintLine(const T value) {
 
 template<>
 void PrintLine(const std::string value) {
-  std::cout << value << "\n";
-}
-
-template<>
-void PrintLine(const std::string_view value) {
   std::cout << value << "\n";
 }
 
@@ -87,11 +55,6 @@ void PrintLine() {
 void PrintBoard(const BoardRenderer& board_renderer) {
   ClearScreen();
   PrintLine(board_renderer.Render());
-}
-
-void ExitScreen() {
-  ClearScreen();
-  PrintLine("Thanks for playing.");
 }
 
 std::string GetLine() {
