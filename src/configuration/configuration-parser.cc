@@ -58,7 +58,9 @@ void ConfigurationParser::ParseShips() {
     } else {
       const int ship_size = std::stoi(ship_size_string);
 
-      if ((ship_size > configuration.board_height) || (ship_size > configuration.board_width)) {
+      if (ship_size < 1) {
+        ReportError(ConfigurationError::ShipTooSmall);
+      } else if ((ship_size > configuration.board_height) || (ship_size > configuration.board_width)) {
         ReportError(ConfigurationError::ShipTooBig);
       } else {
         ShipType ship_type;

@@ -132,6 +132,8 @@ Configuration ReadConfiguration() {
         PrintLine("Board size is too small. (Must be at least 5x5)");
       } else if (error == ConfigurationError::ShipTooBig) {
         PrintLine("A boat was ignored because it is bigger than the board's width or height.");
+      } else if (error == ConfigurationError::ShipTooSmall) {
+        PrintLine("A boat was ignored because it is too small (size 0).");
       } else if (error == ConfigurationError::NoShips) {
         PrintLine("No boats were defined. (Please list at least one in the format "
                   "'Boat: {name}, {size}', e.g. 'Boat: Carrier, 5')");

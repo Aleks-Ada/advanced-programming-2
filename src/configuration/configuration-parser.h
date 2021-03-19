@@ -12,7 +12,8 @@ enum class ConfigurationError {
   BoardSizeTooBig,
   BoardSizeTooSmall,
   ShipTooBig,
-  NoShips
+  NoShips,
+  ShipTooSmall
 };
 
 class ConfigurationParser {

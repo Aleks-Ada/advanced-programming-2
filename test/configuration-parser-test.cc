@@ -143,7 +143,7 @@ TEST(ConfigurationParserTest, BoardSizeTooSmall) {
               Contains(ConfigurationError::BoardSizeTooSmall));
 }
 
-TEST(ConfigurationParserTest, ShipIgnored) {
+TEST(ConfigurationParserTest, ShipIgnoredWhenTooBig) {
   const std::string configuration_string =
       "Board: 20x20\n"
       "Boat: Carrier, 21\n"
@@ -157,6 +157,18 @@ TEST(ConfigurationParserTest, ShipIgnored) {
 
   EXPECT_THAT(parser.GetErrors(),
               Contains(ConfigurationError::ShipTooBig));
+}
+
+TEST(ConfigurationParserTest, ShipIgnoredWhenTooSmall) {
+  const std::string configuration_string =
+      "Board: 20x20\n"
+      "Boat: Carrier, 0\n";
+  ConfigurationParser parser = ConfigurationParser(configuration_string);
+
+  Configuration configuration = parser.Parse();
+
+  EXPECT_THAT(parser.GetErrors(),
+              Contains(ConfigurationError::ShipTooSmall));
 }
 
 TEST(ConfigurationParserTest, NoShipsDetected) {
