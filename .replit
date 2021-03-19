@@ -1,2 +1,2 @@
 language = "cpp"
-run = "cp src/adaship_config.ini adaship_config.ini && clang++ -O3 -Wall -std=c++17 -Isrc $(find src -type f -name '*.cc') -o main && ./main"
+run = "clang++ -O3 -Wall -std=c++17 -Isrc $(find src -type f -name '*.cc') -o main && ./main"
