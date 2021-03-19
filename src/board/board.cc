@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "placement-generator.h"
+#include "shared.h"
 
 char VerifyInRange(const char character) {
   if ((character < 'A') || (character > 'Z')) {
@@ -43,6 +44,13 @@ int LetterIndex::ToInt() const {
   }
 
   return total_value;
+}
+
+std::string Location::ToString() const {
+  const std::string x_string = CoordinateToLetter(x);
+  const std::string y_string = std::to_string(y);
+
+  return x_string + y_string;
 }
 
 bool Boat::operator==(const Boat& rhs) const {
@@ -149,8 +157,14 @@ bool Board::MoveBoat(const ShipType& ship, const Location new_location,
 
   boat_name_to_location.erase(ship.name);
 
-  return AddBoat(ship, new_location, new_orientation);
+  if (!AddBoat(ship, new_location, new_orientation)) {
+    AddBoat(ship, old_starting_location, boat.GetOrientation());
+    return false;
+  }
+
+  return true;
 }
+
 
 bool Board::Shoot(const Location location) {
   if (HasShot(location) || !IsInRange(location)) {
@@ -275,4 +289,8 @@ void Board::AddRandomMines(PlacementGenerator& placement_generator) {
       AddMine(location);
     }
   }
+}
+
+bool Board::IsWithinBounds(const Location location) const {
+  return IsInRange(location);
 }

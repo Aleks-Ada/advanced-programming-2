@@ -11,7 +11,7 @@ Configuration ConfigurationParser::Parse() {
 }
 
 void ConfigurationParser::ParseBoard() {
-  const std::regex board_regex("[Bb][Oo][Aa][Rr][Dd]: ?(\\d+)x(\\d+)");
+  const std::regex board_regex("[Bb][Oo][Aa][Rr][Dd]: ?(\\d{0,9})x(\\d{0,9})");
 
   std::smatch match;
   if (std::regex_search(configuration_string, match, board_regex)) {
@@ -21,23 +21,23 @@ void ConfigurationParser::ParseBoard() {
     const int width = std::stoi(width_string);
     const int height = std::stoi(height_string);
 
-    if (width > 80) {
+    if ((width > 80) || (height > 80)) {
       ReportError(ConfigurationError::BoardSizeTooBig);
-    } else if (height > 80) {
-      ReportError(ConfigurationError::BoardSizeTooBig);
+    } else if ((width < 5) || (height < 5)) {
+      ReportError(ConfigurationError::BoardSizeTooSmall);
     }
 
     configuration.board_width = width;
     configuration.board_height = height;
   } else {
     ReportError(ConfigurationError::BoardSizeNotSpecified);
-    configuration.board_width = -1;
-    configuration.board_height = -1;
+    configuration.board_width = 10;
+    configuration.board_height = 10;
   }
 }
 
 void ConfigurationParser::ParseShips() {
-  const std::regex boat_regex("[BbOoAaTt]: ?([A-Za-z ]+), ?(\\d+)");
+  const std::regex boat_regex("[BbOoAaTt]: ?([A-Za-z ]+), ?(\\d{0,9})");
   std::set<char> ship_starting_letters_found;
 
   const std::sregex_iterator regex_end;
@@ -58,13 +58,21 @@ void ConfigurationParser::ParseShips() {
     } else {
       const int ship_size = std::stoi(ship_size_string);
 
-      ShipType ship_type;
-      ship_type.name = ship_name;
-      ship_type.size = ship_size;
+      if ((ship_size > configuration.board_height) || (ship_size > configuration.board_width)) {
+        ReportError(ConfigurationError::ShipTooBig);
+      } else {
+        ShipType ship_type;
+        ship_type.name = ship_name;
+        ship_type.size = ship_size;
 
-      ship_starting_letters_found.emplace(ship_name_start_letter);
-      configuration.ship_types.emplace_back(ship_type);
+        ship_starting_letters_found.emplace(ship_name_start_letter);
+        configuration.ship_types.emplace_back(ship_type);
+      }
     }
+  }
+
+  if (configuration.ship_types.empty()) {
+    ReportError(ConfigurationError::NoShips);
   }
 }
 

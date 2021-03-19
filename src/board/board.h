@@ -28,6 +28,16 @@ struct Location {
     return (rhs.x == x) && (rhs.y == y);
   }
 
+  bool operator<(const Location rhs) const {
+    if (x != rhs.x) {
+      return x < rhs.x;
+    }
+
+    return y < rhs.y;
+  }
+
+  std::string ToString() const;
+
   int x;
   int y;
 };
@@ -81,6 +91,8 @@ public:
   std::vector<Location> NotFiredLocations() const;
   std::vector<ShipType> GetRemainingShips() const;
 
+  bool IsWithinBounds(const Location location) const;
+
 private:
   bool IsInRange(const Location location) const;
   bool HasBoat(const Location location) const;
@@ -95,30 +107,12 @@ private:
     }
   };
 
-  class LocationEquals {
-  public:
-    bool operator()(const Location lhs, const Location rhs) const {
-      return (lhs.x == rhs.x) && (lhs.y == rhs.y);
-    }
-  };
-
-  class LocationLessThan {
-  public:
-    bool operator()(const Location lhs, const Location rhs) const {
-      if (lhs.x != rhs.x) {
-        return lhs.x < rhs.x;
-      }
-
-      return lhs.y < rhs.y;
-    }
-  };
-
   int width;
   int height;
   std::unordered_map<std::string, Location> boat_name_to_location;
-  std::unordered_map<Location, Boat, LocationHasher, LocationEquals> boats;
-  std::set<Location, LocationLessThan> shot_locations;
-  std::set<Location, LocationLessThan> mine_locations;
+  std::unordered_map<Location, Boat, LocationHasher> boats;
+  std::set<Location> shot_locations;
+  std::set<Location> mine_locations;
 };
 
 #endif // SRC_BOARD_BOARD_H

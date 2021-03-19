@@ -1,5 +1,7 @@
 #include <memory>
+
 #include "board-renderer.h"
+#include "shared.h"
 
 void BoardRenderer::SetMode(const RenderMode render_mode) {
   this->render_mode = render_mode;
@@ -27,23 +29,6 @@ std::string_view MissMarker() {
 
 std::string_view MineMarker() {
   return "M";
-}
-
-char IntToChar(const int value) {
-  char letter = 'A';
-  letter += static_cast<char>(value); // {value} letters further down the alphabet from A
-  return letter;
-}
-
-std::string CoordinateIndexToLetter(const int index) {
-  if (index > 25) {
-    const int character1_value = index / 26;
-    const int character2_value = index % 26;
-
-    return std::string() + IntToChar(character1_value - 1) + IntToChar(character2_value);
-  }
-
-  return std::string() + IntToChar(index);
 }
 
 std::string Pad(const std::string& string, const int required_size) {
@@ -88,7 +73,7 @@ std::string BoardRenderer::Render() const {
   const int width = board.GetWidth();
   const int height = board.GetHeight();
 
-  const int max_column_identifier_chars = CoordinateIndexToLetter(board.GetWidth()).size();
+  const int max_column_identifier_chars = CoordinateToLetter(board.GetWidth()).size();
   const int max_row_identifier_chars = std::to_string(height).size();
 
   auto rows = std::make_unique<std::string[]>(height + 1);
@@ -109,7 +94,7 @@ std::string BoardRenderer::Render() const {
 
     // Row 0
     rows[0] += CellSeparator();
-    rows[0] += Pad(CoordinateIndexToLetter(column - 1), max_render_width);
+    rows[0] += Pad(CoordinateToLetter(column), max_render_width);
 
     for (int row = 1; row <= height; ++row) {
       const Location location(column, row);
@@ -129,7 +114,7 @@ std::string BoardRenderer::Render() const {
           cell_marker = BoatToString(boat.value());
 
           if (board.IsMine(location)) {
-            cell_marker += "+";
+            cell_marker += "/";
             cell_marker += MineMarker();
           }
         } else if (board.IsMine(location)) {

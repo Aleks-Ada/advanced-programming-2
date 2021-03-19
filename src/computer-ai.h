@@ -2,6 +2,7 @@
 #define SRC_BOARD_COMPUTER_AI_H
 
 #include <stack>
+#include <set>
 
 #include "board/random-placement-generator.h"
 
@@ -13,22 +14,21 @@ public:
   Location ChooseNextShot();
 
 private:
-  void TargetAllLocationsAround(const Location location);
+  bool IsValidLocation(const Location location) const;
+  bool AlreadyTargetedLocation(const Location location) const;
+
+  Location ChooseTarget();
+
+  void TargetAllLocationsAroundShotIfHit(const Location location);
+  void TargetLocationsAround(const Location location);
   void AddTargetLocation(const Location location);
 
-  enum TargetingMode {
-    HUNT,
-    FIRE
-  };
-
+private:
   Board& board;
   PlacementGenerator& placement_generator;
 
-  TargetingMode mode = HUNT;
-
-  bool has_last_shot;
   Location last_shot;
-
+  std::set<Location> already_targeted_locations;
   std::stack<Location> next_targets;
 };
 

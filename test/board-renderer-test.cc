@@ -47,9 +47,9 @@ TEST(BoardRendererTest, SelfBoardRenderWithMines) {
 
   EXPECT_EQ("   A   B C D E F G H I   J\n"
             "1                         \n"
-            "2  C+M       M       D+M  \n"
-            "3  C                 D+M  \n"
-            "4  C                 D+M  \n"
+            "2  C/M       M       D/M  \n"
+            "3  C                 D/M  \n"
+            "4  C                 D/M  \n"
             "5  C                 M    \n"
             "6  C         B B B B      \n"
             "7                         \n"
@@ -167,7 +167,7 @@ TEST(BoardRendererTest, MaxBoardSize) {
   const std::string render = board_renderer.Render();
 
   EXPECT_EQ("   A   B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z  AA AB AC AD AE AF AG AH AI AJ AK AL AM AN AO AP AQ AR AS AT AU AV AW AX AY AZ BA BB BC BD BE BF BG BH BI BJ BK BL BM BN BO BP BQ BR BS BT BU BV BW BX BY BZ CA  CB\n"
-            "1  P+M                                                                                                                                                                                                                                        D+M   \n"
+            "1  P/M                                                                                                                                                                                                                                        D/M   \n"
             "2  P                                                                                                                                                                                                                                          D   C \n"
             "3                                                                                                                                                                                                                                             D   C \n"
             "4                                                                                                                                                                                                                                                 C \n"
