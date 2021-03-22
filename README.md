@@ -772,3 +772,667 @@ TEST(ConfigurationParserTest, MultipleShipsWithSameStartLetterRejected) {
 ```
 
 ## 3. Evaluation
+### Analysis with Embedded Examples of Key Code Refactoring, Reuse, Smells
+#### AddBoat / MoveBoat API
+The most major refactoring I performed in my codebase was the boat adding /
+moving API. Initially, my design during testing added boats like this:
+```cpp
+board.AddBoat(Boat(BoatType::Carrier, Orientation::Vertical, BoardLetterIndex(A, 2)));
+```
+
+This would update a `std::map` in my `Board` class that stores all of the
+locations that are populated with their corresponding `Boat`:
+```cpp
+std::unordered_map<Location, Boat, LocationHasher, LocationEquals> boats;
+```
+
+There are many great things about this API. For starters, it's very obvious
+what boat is being added where. Due to the use of the macro `BoardLetterIndex`,
+the stringification of the X-coordinate (`A`) is left to the preprocessor,
+which leaves test code more readable. However, one problem with it is that the
+configuration file specifies the boats that the player is allowed to use.
+Thus, I had to change this API.
+
+The next revision looked like this:
+```cpp
+board.AddBoat(Boat(ShipType{ "Carrier", 5 }, Orientation::Vertical, BoardLetterIndex(A, 2)));
+```
+
+The `ShipType` specifies the name of the ship and the size it occupies.
+
+I encountered another problem with this API when I was adding the board's
+`MoveBoat` API. To move a boat, you specify a boat you want to move, the
+position you want to move it to, and its new orientation.
+
+However, if my `MoveBoat` API was to accept a `Boat` object like the `AddBoat`
+API, it would look like this:
+```cpp
+board.MoveBoat(
+    // Original object
+    Boat(ShipType{ "Carrier", 5 }, Orientation::Vertical, BoardLetterIndex(A, 2)),
+    Orientation::Horizontal,
+    BoardletterIndex(B, 2)
+);
+```
+
+Needless to say, this is rather verbose, and requires me to write well-defined
+equality semantics for `Boat` so that the boat being moved can be identified.
+
+However, after some thought, I realised that the existence of the `Boat` class
+is entirely an implementation detail of `Board`, and that the user should
+simply provide a `ShipType`, an `Orientation`, and a `Location` when adding.
+
+When moving a boat, the same applies, except with the additional requirement
+that `ShipType` should be already  present on the board.
+
+Thus, the MoveBoat API was refactored to:
+```cpp
+board.MoveBoat(
+    ShipType{ "Carrier", 5 },
+    Orientation::Horizontal,
+    BoardletterIndex(B, 2)
+);
+```
+
+This is demonstrated in the `MoveShip` test in `board-test.cc`:
+```cpp
+TEST(BoardTest, MoveShip) {
+  const ShipType cattleship = ShipType{"Cattleship", 4 };
+  Board board(10, 10);
+
+  board.AddBoat(cattleship, BoardLetterIndex(A, 1), Orientation::Vertical);
+  board.MoveBoat(cattleship, BoardLetterIndex(C, 7), Orientation::Vertical);
+  board.MoveBoat(cattleship, BoardLetterIndex(E, 7), Orientation::Horizontal);
+
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(E, 7))->GetShipType(), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(F, 7))->GetShipType(), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(G, 7))->GetShipType(), cattleship);
+  EXPECT_THAT(board.GetBoat(BoardLetterIndex(H, 7))->GetShipType(), cattleship);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 7)), std::nullopt);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 8)), std::nullopt);
+  EXPECT_EQ(board.GetBoat(BoardLetterIndex(C, 9)), std::nullopt);
+}
+```
+
+Although confusing at first, after refactoring, this API became very clear and
+succinct. It's also easy to use and effective, as the user needs minimal
+information to perform a boat move.
+
+#### Getting a Location from the User
+My favourite example of reuse within this codebase is requesting a location
+from the user:
+```cpp
+std::optional<Location> ChooseLocation(const Configuration& configuration) {
+  Print("Please enter a column-row index (e.g. A2, cancel if invalid): ");
+
+  const std::string choice = GetLine();
+
+  std::string column;
+  int row;
+
+  std::smatch regex_match;
+  if (std::regex_match(choice, regex_match, std::regex(R"(^([A-Za-z]{1,2})(\d{1,2})$)"))) {
+    column = regex_match.str(1);
+    row = std::stoi(regex_match.str(2));
+  } else if (std::regex_match(choice, regex_match, std::regex(R"(^(\d{1,2})([A-Za-z]{1,2})$)"))) {
+    row = std::stoi(regex_match.str(1));
+    column = regex_match.str(2);
+  } else {
+    return std::nullopt;
+  }
+
+  Location location;
+
+  try {
+    location = BoardLocation(column, row);
+  } catch (const std::runtime_error&) {
+    return std::nullopt;
+  }
+
+  if ((location.x <= 0) ||
+      (location.y <= 0) ||
+      (location.x > configuration.board_width) ||
+      (location.y > configuration.board_height)) {
+    return std::nullopt;
+  }
+
+  return location;
+}
+```
+This function has been reused all over the codebase (in the `main.cc` source
+file).
+
+It's great because it asks the user for a location, performs rigorous
+validation on the input, and then returns an indication of whether such input
+could be gathered or not.
+
+The use of `std::optional` allows us to return a null value which indicates
+that the input was unsatisfactory, or otherwise return a value which represents
+what the user entered as input.
+
+Every place where a location input was required from the user, this function
+was reused.
+
+I think the reuse of this function helped to make the code better and overall
+saved me a lot of development time of having to write similar function again
+and again.
+
+### Implementation and Effective Use of 'Advanced' Programming Principles
+An advanced programming principle I implemented and used effectively is
+inheritance and abstract classes.
+
+I created an abstract base class called `PlacementGenerator` which can be
+overridden in tests to accurately test random behaviour.
+```cpp
+class PlacementGenerator {
+public:
+  virtual Orientation GenerateOrientation() = 0;
+  virtual Location GenerateLocation(const int width, const int height) = 0;
+
+  virtual Location ChooseLocation(const std::vector<Location>& choices) {
+    return Location();
+  }
+};
+```
+
+Due to the pure virtual functions (`virtual return_type name() = 0`), this
+class cannot be instantiated and needs an implementation.
+
+Please note that the last function, `ChooseLocation`, does have an
+implementation. This function was added later on and, to prevent already
+existing implementations from having to implement it, it was given a default
+return value.
+
+This class was implemented by `RandomPlacementGenerator`:
+```cpp
+class RandomPlacementGenerator : public PlacementGenerator {
+public:
+  RandomPlacementGenerator();
+
+  Orientation GenerateOrientation() override;
+  Location GenerateLocation(const int width, const int height) override;
+  Location ChooseLocation(const std::vector<Location>& choices) override;
+
+private:
+  int RandomNumber(const int start, const int end);
+
+  std::mt19937_64 random;
+};
+```
+
+The implementations look like this:
+```cpp
+RandomPlacementGenerator::RandomPlacementGenerator() : random(std::random_device()()) {}
+
+Orientation RandomPlacementGenerator::GenerateOrientation() {
+  if (RandomNumber(0, 1) == 0) {
+    return Orientation::Horizontal;
+  }
+
+  return Orientation::Vertical;
+}
+
+Location RandomPlacementGenerator::GenerateLocation(const int width, const int height) {
+  return Location(RandomNumber(1, width), RandomNumber(1, height));
+}
+
+Location RandomPlacementGenerator::ChooseLocation(const std::vector<Location>& choices) {
+  return choices.at(RandomNumber(0, choices.size() - 1));
+}
+
+int RandomPlacementGenerator::RandomNumber(const int start, const int end) {
+  std::uniform_int_distribution<int> distribution(start, end);
+  return distribution(random);
+}
+```
+
+### Features Showcase and Embedded Innovations
+In my opinion, the best innovation in the entire program is the `BoardRenderer`
+module. The board renderer takes a board and prints it as a string. This is
+an excellent abstraction for several reasons:
+1. The `Board` module is independent of how it is rendered. It could be
+   rendered in a GUI, for example. The board is only concerned with allowing
+   the storage and retrieval of boats, mines, shots, etc.
+1. The board renderer has the ability to be configured as to what kind of
+   render must be performed, i.e. a self-board render or a target-board render.
+   This is excellent as a single configurable module can be reused to satisfy
+   two functional needs, which reduces code duplication.
+1. This prevents the `Board` module from having to keep a 2D array or string
+   which identifies which ships are where. Instead, the board is only concerned
+   with the logical implementation; that a ship placed in a location with a
+   specific size should be present in all of the cells it occupies. Since the
+   `Board` module is not concerned with rendering, it keeps a map of all of
+   the ships, shots, and mines, which is a great way to store this data as
+   querying is fast and easy. If the board had was to store the rendered
+   format for the boats (i.e. a 2D array), then querying ships and shots
+   would be much more difficult.
+   
+The board renderer is a relatively simple interface:
+```cpp
+enum RenderMode {
+  SELF,
+  TARGET
+};
+
+class BoardRenderer {
+public:
+  explicit BoardRenderer(const Board& board) : board(board), render_mode(SELF) {}
+
+  void SetMode(const RenderMode render_mode);
+  std::string Render() const;
+
+private:
+  bool ShouldRenderWide(const int column) const;
+
+  const Board& board;
+  RenderMode render_mode;
+};
+```
+
+and the way it's clearly and easily tested speaks very well of it's quality:
+(self board render)
+```cpp
+TEST(BoardRendererTest, SelfBoardRender) {
+  Board board(10, 10);
+  BoardRenderer board_renderer(board);
+  board.AddBoat(ShipType{ "Carrier", 5 }, BoardLetterIndex(A, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Destroyer", 3 }, BoardLetterIndex(I, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Battleship", 4 }, BoardLetterIndex(E, 6), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Submarine", 3 }, BoardLetterIndex(C, 9), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Patrol Boat", 2 }, BoardLetterIndex(I, 9), Orientation::Vertical);
+
+  const std::string render = board_renderer.Render();
+
+  EXPECT_EQ("   A B C D E F G H I J\n"
+            "1                     \n"
+            "2  C               D  \n"
+            "3  C               D  \n"
+            "4  C               D  \n"
+            "5  C                  \n"
+            "6  C       B B B B    \n"
+            "7                     \n"
+            "8                     \n"
+            "9      S S S       P  \n"
+            "10                 P  \n", render);
+}
+```
+
+(target board render)
+```cpp
+TEST(BoardRendererTest, TargetBoardRender) {
+  Board board(10, 10);
+  BoardRenderer board_renderer(board);
+  board_renderer.SetMode(TARGET);
+  board.AddBoat(ShipType{ "Carrier", 5 }, BoardLetterIndex(A, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Destroyer", 3 }, BoardLetterIndex(I, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Battleship", 4 }, BoardLetterIndex(E, 6), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Submarine", 3 }, BoardLetterIndex(C, 9), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Patrol Boat", 2 }, BoardLetterIndex(I, 9), Orientation::Vertical);
+  board.Shoot(BoardLetterIndex(A, 1));
+  board.Shoot(BoardLetterIndex(A, 2));
+  board.Shoot(BoardLetterIndex(I, 2));
+  board.Shoot(BoardLetterIndex(E, 6));
+  board.Shoot(BoardLetterIndex(C, 9));
+  board.Shoot(BoardLetterIndex(I, 9));
+
+  const std::string render = board_renderer.Render();
+
+  EXPECT_EQ("   A B C D E F G H I J\n"
+            "1  X                  \n"
+            "2  ●               ●  \n"
+            "3                     \n"
+            "4                     \n"
+            "5                     \n"
+            "6          ●          \n"
+            "7                     \n"
+            "8                     \n"
+            "9      ●           ●  \n"
+            "10                    \n", render);
+}
+```
+
+## Improved Targeting Algorithm
+### Research
+During my research for the improved targeting algorithm, I landed upon an
+excellent website which explains the mathematics behind an optimised
+battleships algorithm: https://www.datagenetics.com/blog/december32011/.
+
+This website explains 4 computer strategies for playing battleships, which get
+more accurate as they go along:
+1. Random targeting
+2. Hunt / target
+3. Hunt / target with parity
+4. Probability density analysis
+
+Number 1 is the default implementation that I wrote. It simply targets a cell that
+hasn't already been targeted. This is extremely slow and, as demonstrated in
+the article, usually requires most cells on the board to have been hit
+before the computer wins.
+   
+Number 2 is a hybrid approach. At first, random targeting is used. However, once a
+ship has been hit, the AI switches into a target mode, where it will exhaustively
+select all of the cells around the hit to ensure that the ship hit and any ships
+that may have been joined. This technique shows a large performance boost and is the
+technique I chose.
+
+Number 3 is the hybrid approach with a parity optimisation. The parity rule is that
+a ship has a minimum size of 2, which means that only half of the cells on the board
+need to be hit to discover all of the ships. This improves the accuracy of the random
+targeting part of the algorithm, as less cells are hit before a ship is discovered.
+However, in our version of battleships, ships can be of arbitrary sizes (including
+size 1), so this option was discarded.
+
+Number 4 is a probability density analysis. All of the possible locations of each
+ship on the board are calculated, and the cell with the highest chance of
+containing a ship is hit. This immensely improves the performance of the algorithm,
+with a good chance of beating a novice human player, if they didn't know the
+computer's board. This algorithm is largely complicated, even more so by the
+fact that our version of battleships can have arbitrary numbers and sizes of
+ships. Since the requirement for this section was that the algorithm is just
+'better-than-random', option 2 was chosen.
+
+### Design
+The design of the implementation is simple. A `ComputerAi` class will be created,
+which can be instantiated by the `main` module and takes an opponent's board as a
+constructor argument, as well as the aforementioned `PlacementGenerator`
+abstraction. This allows both easy testing and easy use in the `main` module. In
+the main module, a real instance of the `RandomPlacementGenerator` is provided.
+
+### Implementation
+The implementation is rather simple. This is the class signature in the header file:
+```cpp
+class ComputerAi {
+public:
+  explicit ComputerAi(Board& board, PlacementGenerator& placement_generator)
+  : board(board), placement_generator(placement_generator) {}
+
+  Location ChooseNextShot();
+
+private:
+  bool IsValidLocation(const Location location) const;
+  bool AlreadyTargetedLocation(const Location location) const;
+
+  Location ChooseTarget();
+
+  void TargetAllLocationsAroundShotIfHit(const Location location);
+  void TargetLocationsAround(const Location location);
+  void AddTargetLocation(const Location location);
+
+private:
+  Board& board;
+  PlacementGenerator& placement_generator;
+
+  Location last_shot;
+  std::set<Location> already_targeted_locations;
+  std::stack<Location> next_targets;
+};
+```
+
+The user simply uses the `ChooseNextShot()` function, and the AI calculates
+and returns the appropriate value. Several helper private functions are
+available.
+
+The header implementation looks like this:
+```cpp
+std::vector<Location> All8LocationsAround(const Location location) {
+  std::vector<Location> locations;
+
+  const Location top(location.x, location.y - 1);
+  const Location bottom(location.x, location.y + 1);
+  const Location left(location.x - 1, location.y);
+  const Location right(location.x + 1, location.y);
+  const Location top_left(location.x - 1, location.y - 1);
+  const Location top_right(location.x + 1, location.y - 1);
+  const Location bottom_left(location.x - 1, location.y + 1);
+  const Location bottom_right(location.x + 1, location.y + 1);
+
+  locations.push_back(top);
+  locations.push_back(bottom);
+  locations.push_back(left);
+  locations.push_back(right);
+  locations.push_back(top_left);
+  locations.push_back(top_right);
+  locations.push_back(bottom_left);
+  locations.push_back(bottom_right);
+
+  return locations;
+}
+
+std::vector<Location> All4LocationsAround(const Location location) {
+  std::vector<Location> locations;
+
+  const Location top(location.x, location.y - 1);
+  const Location bottom(location.x, location.y + 1);
+  const Location left(location.x - 1, location.y);
+  const Location right(location.x + 1, location.y);
+
+  locations.push_back(top);
+  locations.push_back(bottom);
+  locations.push_back(left);
+  locations.push_back(right);
+
+  return locations;
+}
+
+bool ComputerAi::IsValidLocation(const Location location) const {
+  return board.IsWithinBounds(location) && !board.HasShot(location);
+}
+
+bool ComputerAi::AlreadyTargetedLocation(const Location location) const {
+  return already_targeted_locations.find(location) != already_targeted_locations.end();
+}
+
+Location ComputerAi::ChooseNextShot() {
+  TargetAllLocationsAroundShotIfHit(last_shot);
+
+  Location target;
+
+  while (true) {
+    target = ChooseTarget();
+
+    if (board.HasShot(target)) {
+      already_targeted_locations.emplace(target);
+    } else {
+      break;
+    }
+  }
+
+  last_shot = target;
+  already_targeted_locations.emplace(target);
+
+  return target;
+}
+
+Location ComputerAi::ChooseTarget() {
+  Location target;
+
+  if (next_targets.empty()) {
+    target = placement_generator.ChooseLocation(board.NotFiredLocations());
+  } else {
+    target = next_targets.top();
+    next_targets.pop();
+  }
+
+  return target;
+}
+
+void ComputerAi::TargetAllLocationsAroundShotIfHit(const Location location) {
+  if (board.HasShot(location)) {
+    if (board.IsMine(location)) {
+      for (const Location sub_location : All8LocationsAround(location)) {
+        if (!AlreadyTargetedLocation(sub_location)) {
+          TargetAllLocationsAroundShotIfHit(sub_location);
+        }
+      }
+    } else if (board.IsHit(location)) {
+      TargetLocationsAround(location);
+    }
+  }
+}
+
+void ComputerAi::TargetLocationsAround(const Location location) {
+  for (const Location sub_location : All4LocationsAround(location)) {
+    AddTargetLocation(sub_location);
+  }
+}
+
+void ComputerAi::AddTargetLocation(const Location location) {
+  if (IsValidLocation(location) && !AlreadyTargetedLocation(location)) {
+    next_targets.push(location);
+  }
+}
+```
+
+The most important part of this implementation is the `ChooseTarget` private function.
+
+If the stack of next targets to try is empty, then the algorithm is in hunt
+mode. Thus, it just chooses a random location from the location which haven't
+been fired on the board yet.
+
+Otherwise, the target on top of the `next_targets` stack is popped and used.
+
+At the beginning of each turn, the AI checks whether the last shot hit a 
+target, and if so pushes on the `next_targets` stack all of the locations
+around that target, taking into account the possibility of mines existing
+in that location or locations around. Due to the existence of mines,
+where the mines may uncover more ships, the algorithm is recursive in that
+if a mine is hit, it will check all locations the mine hit as well.
+
+### Tested Confirmation
+The algorithm was tested in the `test/computer-ai-test.cc` file with a
+test-double ('fake') implementation of `PlacementGenerator`.
+
+
+There are two tests, the first is a simple test that the algorithm
+follows through with hit points.
+The test tests this scenario from the research website:
+
+![](https://www.datagenetics.com/blog/december32011/s029.png)
+```cpp
+TEST(ComputerAiTest, HuntMode) {
+  Board board(10, 10);
+  BoardRenderer board_renderer(board);
+  board_renderer.SetMode(TARGET);
+  board.AddBoat(ShipType{ "Carrier", 5 }, BoardLetterIndex(F, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Battleship", 4 }, BoardLetterIndex(D, 7), Orientation::Horizontal);
+  std::queue<Location> locations_to_shoot;
+  locations_to_shoot.push(BoardLetterIndex(F, 6));
+  CustomPlacementGenerator placement_generator(board, locations_to_shoot);
+  ComputerAi computer_ai(board, placement_generator);
+
+  for (int i = 0; i < 27; ++i) {
+    board.Shoot(computer_ai.ChooseNextShot());
+  }
+
+  EXPECT_EQ("   A B C D E F G H I J\n"
+            "1            X        \n"
+            "2          X ● X      \n"
+            "3          X ● X      \n"
+            "4          X ● X      \n"
+            "5          X ● X      \n"
+            "6        X X ● X      \n"
+            "7      X ● ● ● ● X    \n"
+            "8        X X X X      \n"
+            "9                     \n"
+            "10                    \n", board_renderer.Render());
+}
+```
+
+As you can see, there is a predefined `queue` of locations to shoot. It starts
+off by shooting location `F6`, where the `"Carrier"` ship is present. Then,
+in the next 27 turns, the algorithm should shoot all locations around to also
+uncover the `"Battleship"` ship, as well as checking all locations around for
+potential joint ships. This test passes.
+
+Furthermore, another test for a full game is included, which also places two
+mines on the board:
+```cpp
+TEST(ComputerAiTest, FullGame) {
+  Board board(10, 10);
+  BoardRenderer board_renderer(board);
+  board_renderer.SetMode(TARGET);
+  board.AddBoat(ShipType{ "Carrier", 5 }, BoardLetterIndex(F, 2), Orientation::Vertical);
+  board.AddBoat(ShipType{ "Battleship", 4 }, BoardLetterIndex(D, 7), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Patrol", 3 }, BoardLetterIndex(A, 1), Orientation::Horizontal);
+  board.AddBoat(ShipType{ "Small Patrol", 1 }, BoardLetterIndex(A, 1), Orientation::Horizontal);
+  board.AddMine(BoardLetterIndex(F, 6));
+  board.AddMine(BoardLetterIndex(E, 6));
+  std::queue<Location> target_locations;
+  target_locations.push(BoardLetterIndex(F, 6));
+  target_locations.push(BoardLetterIndex(J, 1));
+  target_locations.push(BoardLetterIndex(J, 10));
+  target_locations.push(BoardLetterIndex(A, 10));
+  target_locations.push(BoardLetterIndex(A, 1));
+  CustomPlacementGenerator placement_generator(board, target_locations);
+  ComputerAi computer_ai(board, placement_generator);
+
+  while (!board.AreAllShipsSunk()) {
+    EXPECT_TRUE(board.Shoot(computer_ai.ChooseNextShot()));
+
+  }
+
+  EXPECT_EQ("   A B C D E F G H I J\n"
+            "1  ● ● ●     X       X\n"
+            "2          X ● X      \n"
+            "3          X ● X      \n"
+            "4          X ● X      \n"
+            "5        X X ● X      \n"
+            "6        X X ● X      \n"
+            "7      X ● ● ● ● X    \n"
+            "8        X X X X      \n"
+            "9                     \n"
+            "10 X                 X\n", board_renderer.Render());
+}
+```
+
+The test verifies that each shot the AI performs is successful. Random shots
+are simulated by shooting at locations `F6`, `J1`, `J10`, `A10`, and `A1`.
+The initial location is the middle of the ships (where a mine is also present),
+and the other locations are just hits around the corners of the shipboard.
+
+Hitting the first mine also triggers a second mine (at `E6`), which tests the
+recursive nature of the algorithm. Initially, there was an infinite recursion
+issue here which was caught by this test.
+
+This test also passes.
+
+Verification that these tests pass can be done by cloning googletest and running
+cmake in the root directory.
+
+Assuming that git, cmake, make, clang, and clang++ are all installed on a linux
+machine, if you clone this directory, you can verify that the tests pass by
+running this chain of commands:
+```sh
+git clone https://github.com/google/googletest ./lib/googletest && \
+/usr/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/usr/bin/make -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++ && \
+/usr/bin/cmake --build . --target advanced-programming-2_test && \
+./test/advanced-programming-2_test
+```
+
+After running this command, output like this should present, which shows that
+the tests have run and passed:
+
+<img src="./test-run.png">
+
+## Reflective Review
+Overall, the project is completed to a high standard, with well-designed
+abstractions and an architecture that went to plan. Code is reused 
+frequently and rarely duplicated. Even when duplicated, such duplication
+is done for a reason, for example with the expectations that two sets of
+code might change for varying reasons (in which case they shouldn't be
+abstracted, as the abstraction might introduce more issues than it solves).
+
+Although well-written, there are several opportunities to improve the code,
+as it had to be written under a strict time deadline. Examples of this
+include the large amount of code in the `main` module which remains
+untested. Would the conditions have permitted, this code would ideally be
+tested by some sort of UI test suite designed by the developer.
+
+As for continued professional development, there may be an opportunity
+in this codebase to go through and identify where better data structures
+could have been used, and to further study the C++ standard library for
+features which could have helped the project. To achieve this, I continued
+to read the C++ standard library source code for the GCC compiler
+(available at https://gcc.gnu.org/onlinedocs/gcc-10.2.0). Furthermore,
+I will read the containers section of the C++ reference website
+(available at https://en.cppreference.com/w/).

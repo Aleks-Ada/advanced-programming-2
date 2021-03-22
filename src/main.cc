@@ -790,8 +790,7 @@ void ComputerVsComputerHiddenMines(const Configuration& configuration,
   PressEnterToContinue();
 }
 
-int main()
-{
+int main() {
   RandomPlacementGenerator placement_generator;
   Configuration configuration = ReadConfiguration();
 

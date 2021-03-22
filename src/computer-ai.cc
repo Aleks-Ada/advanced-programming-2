@@ -107,5 +107,3 @@ void ComputerAi::AddTargetLocation(const Location location) {
     next_targets.push(location);
   }
 }
-
-

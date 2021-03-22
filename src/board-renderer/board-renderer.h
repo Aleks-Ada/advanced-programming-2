@@ -18,6 +18,7 @@ public:
   void SetMode(const RenderMode render_mode);
   std::string Render() const;
 
+private:
   bool ShouldRenderWide(const int column) const;
 
   const Board& board;
