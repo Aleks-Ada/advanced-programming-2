@@ -1408,6 +1408,7 @@ git clone https://github.com/google/googletest ./lib/googletest && \
 /usr/bin/cmake --build . --target advanced-programming-2_test && \
 ./test/advanced-programming-2_test
 ```
+This will also work if ran in repl.it's shell.
 
 After running this command, output like this should present, which shows that
 the tests have run and passed:
